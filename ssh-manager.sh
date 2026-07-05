@@ -19,7 +19,7 @@ echo "5. 查看SSH配置"
 echo "6. 查看最近登录"
 echo "7. 重启SSH"
 echo "0. 退出"
-read -rp "请选择: " c
+
 backup
 case $c in
 1) set_opt PasswordAuthentication yes; restart_ssh;;
