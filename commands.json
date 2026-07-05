@@ -1,0 +1,28 @@
+{
+  "commands": [
+    {
+      "id": 1783104229126,
+      "name": "3x-ui",
+      "command": "bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)",
+      "description": "",
+      "created_at": "2026-07-04T02:43:49+08:00",
+      "updated_at": "2026-07-04T02:43:49+08:00"
+    },
+    {
+      "id": 1783104369923,
+      "name": "s-ui",
+      "command": "bash <(curl -Ls https://raw.githubusercontent.com/alireza0/s-ui/master/install.sh)",
+      "description": "",
+      "created_at": "2026-07-04T02:46:09+08:00",
+      "updated_at": "2026-07-04T02:48:20+08:00"
+    },
+    {
+      "id": 1783144633537,
+      "name": "1Panel服务器运维管理面板",
+      "command": "bash -c \"$(curl -sSL https://resource.fit2cloud.com/1panel/package/v2/quick_start.sh)\"",
+      "description": "",
+      "created_at": "2026-07-04T13:57:13+08:00",
+      "updated_at": "2026-07-04T13:57:13+08:00"
+    }
+  ]
+}
