@@ -35,10 +35,10 @@
     {
       "id": 1783397361182,
       "name": "科技lion一键脚本工具",
-      "command": "bash <(curl -sL kejilion.sh",
+      "command": "bash <(curl -sL kejilion.sh)",
       "description": "",
       "created_at": "2026-07-06T21:09:21-07:00",
-      "updated_at": "2026-07-07T03:37:29-07:00"
+      "updated_at": "2026-07-07T03:38:33-07:00"
     }
   ]
 }
