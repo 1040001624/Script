@@ -33,7 +33,7 @@
       "updated_at": "2026-07-05T15:32:26+08:00"
     },
     {
-      "id": 1783397361182,
+      "id": 1783097361182,
       "name": "科技lion一键脚本工具",
       "command": "bash <(curl -sL kejilion.sh)",
       "description": "",
