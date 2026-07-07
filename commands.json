@@ -55,6 +55,14 @@
       "description": "",
       "created_at": "2026-07-07T05:21:12-07:00",
       "updated_at": "2026-07-07T05:21:12-07:00"
+    },
+    {
+      "id": 1783426953898,
+      "name": "Argo + Sing-box一键脚本",
+      "command": "bash <(wget -qO- https://raw.githubusercontent.com/fscarmen/sba/main/sba.sh)",
+      "description": "",
+      "created_at": "2026-07-07T05:22:33-07:00",
+      "updated_at": "2026-07-07T05:22:33-07:00"
     }
   ]
 }
