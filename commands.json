@@ -39,6 +39,14 @@
       "description": "",
       "created_at": "2026-07-06T21:09:21-07:00",
       "updated_at": "2026-07-07T03:38:33-07:00"
+    },
+    {
+      "id": 1783426532246,
+      "name": "Sing-box 全家桶一键脚本",
+      "command": "bash <(wget -qO- https://raw.githubusercontent.com/fscarmen/sing-box/main/sing-box.sh)",
+      "description": "",
+      "created_at": "2026-07-07T05:15:32-07:00",
+      "updated_at": "2026-07-07T05:15:32-07:00"
     }
   ]
 }
