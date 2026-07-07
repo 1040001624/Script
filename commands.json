@@ -25,14 +25,6 @@
       "updated_at": "2026-07-04T13:57:13+08:00"
     },
     {
-      "id": 1783236746907,
-      "name": "密码登录开关",
-      "command": "bash <(curl -Ls https://raw.githubusercontent.com/1040001624/Script/refs/heads/main/Login.sh)",
-      "description": "必须先设置秘钥登录",
-      "created_at": "2026-07-05T15:32:26+08:00",
-      "updated_at": "2026-07-05T15:32:26+08:00"
-    },
-    {
       "id": 1783397361182,
       "name": "科技lion一键脚本工具",
       "command": "bash <(curl -sL kejilion.sh)",
