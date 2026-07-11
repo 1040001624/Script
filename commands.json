@@ -63,6 +63,14 @@
       "description": "",
       "created_at": "2026-07-07T05:22:33-07:00",
       "updated_at": "2026-07-07T05:22:33-07:00"
+    },
+    {
+      "id": 1783750230189,
+      "name": "fastfetch系统信息",
+      "command": "bash <(curl -Ls https://raw.githubusercontent.com/1040001624/Script/refs/heads/main/install-fastfetch.sh)",
+      "description": "导入配置+开机自启",
+      "created_at": "2026-07-10T23:10:30-07:00",
+      "updated_at": "2026-07-10T23:10:30-07:00"
     }
   ]
 }
