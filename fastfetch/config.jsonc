@@ -125,7 +125,7 @@
 {
   "type": "command",
   "key": "SSH登录",
-  "text": "CFG=$(cat /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf 2>/dev/null); if echo \"$CFG\" | grep -Eq '^AuthenticationMethods[[:space:]]+publickey,password'; then echo '密钥登录+密码登录'; elif echo \"$CFG\" | grep -Eq '^PasswordAuthentication[[:space:]]+no' && echo \"$CFG\" | grep -Eq '^PubkeyAuthentication[[:space:]]+yes'; then echo '密钥登录'; elif echo \"$CFG\" | grep -Eq '^PasswordAuthentication[[:space:]]+yes'; then echo '密码登录'; else echo '默认'; fi"
+  "text": "CFG=$(sshd -T 2>/dev/null); PUB=$(echo \"$CFG\" | grep '^pubkeyauthentication yes'); PASS=$(echo \"$CFG\" | grep '^passwordauthentication yes'); PORT=$(echo \"$CFG\" | grep '^port ' | awk '{print $2}'); if [ -n \"$PUB\" ] && [ -n \"$PASS\" ]; then MODE='密钥+密码'; elif [ -n \"$PUB\" ]; then MODE='仅密钥'; elif [ -n \"$PASS\" ]; then MODE='仅密码'; else MODE='默认'; fi; echo \"$MODE (端口:$PORT)\""
 },
 {
   "type": "command",
