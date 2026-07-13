@@ -75,10 +75,10 @@
     {
       "id": 1783939548721,
       "name": "fail2ban汉化(f2b查看)",
-      "command": "sed -i '/alias f2b=/d' ~/.bashrc && echo \"alias f2b='echo \"=== Fail2ban SSH 防护状态 ===\" && sudo fail2ban-client status sshd | grep -v \"Journal matches\" | sed \"s/Status for the jail:/【监控监狱】:/g; s/Filter/【过滤器状态】/g; s/Currently failed:/ ├─ 当前正尝试失败的连接数:/g; s/Total failed:/ └─ 历史总计失败尝试次数:/g; s/Actions/【防火墙动作】/g; s/Currently banned:/ ├─ 当前正在被封禁的 IP 数:/g; s/Total banned:/ ├─ 历史总计封禁过的 IP 数:/g; s/Banned IP list:/ └─ 当前被封禁的 IP 黑名单:/g\"'\" >> ~/.bashrc && exec \"$SHELL\"",
+      "command": "sed -i '/alias f2b=/d; /alias f2b-status=/d' ~/.bashrc && echo \"alias f2b='echo \"=== Fail2ban SSH 防护状态 ===\" && sudo fail2ban-client status sshd | grep -v \"Journal matches\" | sed \"s/Status for the jail:/【监控监狱】:/g; s/Filter/【过滤器状态】/g; s/Currently failed:/  ├─ 当前正尝试失败的连接数:/g; s/Total failed:/  └─ 历史总计失败尝试次数:/g; s/Actions/【防火墙动作】/g; s/Currently banned:/  ├─ 当前正在被封禁的 IP 数:/g; s/Total banned:/  ├─ 历史总计封禁过的 IP 数:/g; s/Banned IP list:/  └─ 当前被封禁的 IP 黑名单:/g\"'\" >> ~/.bashrc && exec \"$SHELL\"",
       "description": "",
       "created_at": "2026-07-13T03:45:48-07:00",
-      "updated_at": "2026-07-13T03:52:09-07:00"
+      "updated_at": "2026-07-13T04:01:14-07:00"
     },
     {
       "id": 1783939609350,
