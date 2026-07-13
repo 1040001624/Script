@@ -79,6 +79,14 @@
       "description": "",
       "created_at": "2026-07-13T03:45:48-07:00",
       "updated_at": "2026-07-13T03:45:48-07:00"
+    },
+    {
+      "id": 1783939609350,
+      "name": "fail2ban汉化卸载",
+      "command": "sed -i '/alias f2b=/d' ~/.bashrc && exec \"$SHELL\"",
+      "description": "",
+      "created_at": "2026-07-13T03:46:49-07:00",
+      "updated_at": "2026-07-13T03:46:49-07:00"
     }
   ]
 }
