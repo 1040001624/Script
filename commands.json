@@ -71,6 +71,14 @@
       "description": "导入配置+开机自启",
       "created_at": "2026-07-10T23:10:30-07:00",
       "updated_at": "2026-07-10T23:10:30-07:00"
+    },
+    {
+      "id": 1784868518350,
+      "name": "Vaultwarden备份坚果云",
+      "command": "bash <(curl -sL https://raw.githubusercontent.com/1040001624/Script/refs/heads/main/vaultwarden_backup.sh)",
+      "description": "",
+      "created_at": "2026-07-24T12:48:38+08:00",
+      "updated_at": "2026-07-24T12:48:38+08:00"
     }
   ]
 }
