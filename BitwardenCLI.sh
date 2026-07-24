@@ -9,7 +9,7 @@
 set -euo pipefail
 
 # ----------------- 1. 配置参数 -----------------
-VAULT_URL="${VAULT_URL:-https://920109.xyz}"
+VAULT_URL="${VAULT_URL:-https://b.920109.xyz}"
 BACKUP_DIR="${BACKUP_DIR:-/home/docker/vaultwarden/cli}"
 DATE=$(date +%F)
 
