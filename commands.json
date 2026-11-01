@@ -3,7 +3,7 @@
     {
       "id": 1783104229126,
       "name": "3x-ui",
-      "command": "bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)",
+      "command": "SUI_LANG=zhcn bash <(curl -Ls https://raw.githubusercontent.com/alireza0/s-ui/master/install.sh)bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)",
       "description": "",
       "created_at": "2026-07-04T02:43:49+08:00",
       "updated_at": "2026-07-04T02:43:49+08:00"
