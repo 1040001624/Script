@@ -66,11 +66,11 @@
     },
     {
       "id": 1783750230189,
-      "name": "fastfetch系统信息",
+      "name": "fastfetc安装+导入设置+开机自启+f启动",
       "command": "bash <(curl -Ls https://raw.githubusercontent.com/1040001624/Script/refs/heads/main/install-fastfetch.sh) && sudo ln -sf /usr/bin/fastfetch /usr/local/bin/f",
       "description": "导入配置+开机自启",
       "created_at": "2026-07-10T23:10:30-07:00",
-      "updated_at": "2026-11-02T09:37:53+00:00"
+      "updated_at": "2026-11-02T09:47:10+00:00"
     },
     {
       "id": 1784868518350,
