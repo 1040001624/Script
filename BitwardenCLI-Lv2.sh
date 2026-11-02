@@ -30,11 +30,20 @@ if [ ! -f "$RCLONE_CONFIG" ]; then
     exit 1
 fi
 
-# 检查 Bitwarden CLI (优先使用宿主机，若无则尝试通过 node 环境安装)
+# 检查 Bitwarden CLI (优先使用宿主机，若无则自动下载官方最新独立版)
 if ! command -v bw &> /dev/null; then
-    echo "=== 宿主机 Bitwarden CLI 未安装，正在尝试安装... ==="
-    sudo apt update && sudo apt install -y nodejs npm
-    sudo npm install -g @bitwarden/cli
+    echo "=== 宿主机 Bitwarden CLI 未安装，正在通过官方二进制方式安装... ==="
+    sudo apt update && sudo apt install -y unzip curl
+    
+    # 创建临时目录下载并解压
+    TMP_DIR=$(mktemp -d)
+    curl -Lso "$TMP_DIR/bw-linux.zip" "https://vault.bitwarden.com/download/?app=cli&platform=linux"
+    unzip -q "$TMP_DIR/bw-linux.zip" -d "$TMP_DIR"
+    chmod +x "$TMP_DIR/bw"
+    sudo mv "$TMP_DIR/bw" /usr/local/bin/
+    rm -rf "$TMP_DIR"
+    
+    echo "✅ Bitwarden CLI 安装成功，当前版本: $(bw --version)"
 fi
 
 # ----------------- 3. 配置服务器地址与登录 -----------------
