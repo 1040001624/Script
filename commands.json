@@ -94,7 +94,7 @@
       "command": "# 1. 安装解压工具",
       "description": "sudo apt update && sudo apt install -y unzip curl",
       "created_at": "2026-11-02T18:04:01+00:00",
-      "updated_at": "2026-11-02T18:04:01+00:00"
+      "updated_at": "2026-11-02T18:04:40+00:00"
     }
   ]
 }
