@@ -53,7 +53,7 @@ bw sync
 echo "=== 开始备份密码库 ==="
 
 # 备份 1: JSON 加密导出 (带日期)
-bw export --format encrypted_json --output "$BACKUP_DIR/vaultwarden-mi-$DATE.json"
+bw export --format encrypted_json --password "$BW_PASSWORD" --output "$BACKUP_DIR/vaultwarden-mi-$DATE.json"
 echo "✅ 已生成加密备份: $BACKUP_DIR/vaultwarden-mi-$DATE.json"
 
 # 备份 2: JSON 明文导出 (带日期)
