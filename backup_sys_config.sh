@@ -25,8 +25,8 @@ crontab -l > "$BACKUP_DIR/crontab.cron" 2>/dev/null || echo "# No crontab data" 
 # 2. 安全打包：动态检查文件是否存在，避免 tar 报错
 TAR_LIST=()
 
-# 自动检测并加入存在的核心文件，不存在的会自动优雅跳过
-for file in ".env" "crontab.cron" "vaultwarden-backup.sh" "backup_sys_config.sh"; do
+# 自动检测并加入存在的核心文件（已加入 run_daily_backup.sh）
+for file in ".env" "crontab.cron" "vaultwarden-backup.sh" "run_daily_backup.sh" "backup_sys_config.sh"; do
     if [ -f "$BACKUP_DIR/$file" ]; then
         TAR_LIST+=("$file")
     fi
