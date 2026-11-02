@@ -53,12 +53,12 @@ bw sync
 echo "=== 开始备份密码库 ==="
 
 # 备份 1: JSON 加密导出 (带日期)
-bw export --format encrypted_json --output "$BACKUP_DIR/vaultwarden-$DATE.json"
-echo "✅ 已生成加密备份: $BACKUP_DIR/vaultwarden-$DATE.json"
+bw export --format encrypted_json --output "$BACKUP_DIR/vaultwarden-mi-$DATE.json"
+echo "✅ 已生成加密备份: $BACKUP_DIR/vaultwarden-mi-$DATE.json"
 
 # 备份 2: JSON 明文导出 (带日期)
-bw export --format json --output "$BACKUP_DIR/backup-$DATE.json"
-echo "✅ 已生成明文备份: $BACKUP_DIR/backup-$DATE.json"
+bw export --format json --output "$BACKUP_DIR/vaultwarden-open-$DATE.json"
+echo "✅ 已生成明文备份: $BACKUP_DIR/vaultwarden-open-$DATE.json"
 
 # ----------------- 6. 登出清理会话 -----------------
 echo "=== 正在注销会话 ==="
