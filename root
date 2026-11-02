@@ -1,0 +1,19 @@
+# 1. 自动创建好所需的文件夹路径
+mkdir -p /home/docker/vaultwarden/cli /root/.config/rclone/
+
+# 2. 一键解压配置包到 root 目录
+tar -xzf /root/system-config-*.tar.gz -C /root/
+
+# 3. 归位：分发恢复所有核心文件
+mv /root/.env /home/docker/vaultwarden/cli/.env
+mv /root/vaultwarden-backup.sh /home/docker/vaultwarden/cli/vaultwarden-backup.sh
+chmod +x /home/docker/vaultwarden/cli/vaultwarden-backup.sh
+mv /root/rclone.conf /root/.config/rclone/rclone.conf
+
+# 4. 恢复你的 crontab 每日定时执行任务
+crontab /root/crontab.cron
+
+# 5. 清理临时解压出来的文件
+rm -f /root/crontab.cron /root/system-config-*.tar.gz
+
+echo "✨ 恭喜！你的 .env 环境变量、Rclone配置、Crontab定时任务、备份脚本已全部一键完美复活！"
