@@ -1,19 +1,70 @@
-# 1. 自动创建好所需的文件夹路径
-mkdir -p /home/docker/vaultwarden/cli /root/.config/rclone/
+#!/bin/bash
+# ==============================================================================
+# 脚本名称: restore_sys_config.sh
+# 描述: 支持 GitHub 远程一键执行 - 从坚果云拉取最新环境快照并一键还原
+# ==============================================================================
 
-# 2. 一键解压配置包到 root 目录
-tar -xzf /root/system-config-*.tar.gz -C /root/
+set -euo pipefail
 
-# 3. 归位：分发恢复所有核心文件
-mv /root/.env /home/docker/vaultwarden/cli/.env
-mv /root/vaultwarden-backup.sh /home/docker/vaultwarden/cli/vaultwarden-backup.sh
-chmod +x /home/docker/vaultwarden/cli/vaultwarden-backup.sh
-mv /root/rclone.conf /root/.config/rclone/rclone.conf
+# 核心配置（保持与备份脚本严格一致）
+BACKUP_DIR="/home/docker/vaultwarden/cli"
+REMOTE="jianguoyun:vaultwarden"
+RCLONE_CONFIG="/root/.config/rclone/rclone.conf"
 
-# 4. 恢复你的 crontab 每日定时执行任务
-crontab /root/crontab.cron
+echo "=== ⏳ 正在检查还原前置条件 ==="
 
-# 5. 清理临时解压出来的文件
-rm -f /root/crontab.cron /root/system-config-*.tar.gz
+# 1. 检查 rclone 命令及配置文件是否存在
+if ! command -v rclone &> /dev/null; then
+    echo "❌ 错误: 未检测到 rclone 命令，请先安装 rclone！"
+    exit 1
+fi
 
-echo "✨ 恭喜！你的 .env 环境变量、Rclone配置、Crontab定时任务、备份脚本已全部一键完美复活！"
+if [ ! -f "$RCLONE_CONFIG" ]; then
+    echo "❌ 错误: 未在 $RCLONE_CONFIG 找到坚果云认证配置，请先配置或恢复该文件！"
+    exit 1
+fi
+
+# 2. 创建所需的目标挂载目录
+mkdir -p "$BACKUP_DIR"
+mkdir -p "$(dirname "$RCLONE_CONFIG")"
+
+# 3. 从坚果云寻找最新的快照文件
+echo "=== ⏳ 正在从坚果云检索最新备份快照 ==="
+# 获取最新上传的包含 system-config-snapshot 的文件名
+LATEST_BACKUP=$(rclone lsf "$REMOTE" --config "$RCLONE_CONFIG" | grep "system-config-snapshot-" | sort | tail -n 1)
+
+if [ -z "$LATEST_BACKUP" ]; then
+    echo "❌ 错误: 未在坚果云 ($REMOTE) 中找到任何系统环境快照文件！"
+    exit 1
+fi
+
+echo "🔍 发现最新快照: $LATEST_BACKUP"
+TEMP_RESTORE_PATH="$BACKUP_DIR/$LATEST_BACKUP"
+
+# 4. 下载快照到本地
+echo "=== ⏳ 正在下载快照文件中... ==="
+rclone copyto "$REMOTE/$LATEST_BACKUP" "$TEMP_RESTORE_PATH" --config "$RCLONE_CONFIG"
+
+# 5. 执行解压还原
+echo "=== ⏳ 开始安全释放并还原所有配置文件 ==="
+# -k 参数代表不覆盖比压缩包里更新的本地同名文件（安全防护）
+# 移除原本打包时的相对路径限制，直接解压还原
+tar -xzf "$TEMP_RESTORE_PATH" -C /
+
+# 6. 自动恢复 crontab 定时任务
+if [ -f "$BACKUP_DIR/crontab.cron" ]; then
+    echo "=== ⏳ 正在恢复 crontab 定时任务 ==="
+    if [ "$(cat "$BACKUP_DIR/crontab.cron")" != "# No crontab data" ]; then
+        crontab "$BACKUP_DIR/crontab.cron"
+        echo "✅ 定时任务已成功同步恢复到系统！"
+    else
+        echo "ℹ️ 快照内无定时任务数据，跳过恢复。"
+    fi
+    # 清理释放出来的临时 cron 文件
+    rm -f "$BACKUP_DIR/crontab.cron"
+fi
+
+# 7. 清理下载的压缩包缓存
+rm -f "$TEMP_RESTORE_PATH"
+
+echo "🎉 [恭喜] 所有的核心环境配置（.env / 脚本 / crontab）已成功一键还原！"
