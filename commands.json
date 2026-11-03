@@ -87,6 +87,14 @@
       "description": "",
       "created_at": "2026-07-24T13:59:25+08:00",
       "updated_at": "2026-07-24T13:59:25+08:00"
+    },
+    {
+      "id": 1793674532415,
+      "name": "Vaultwarden/CLI密码文件云备份",
+      "command": "source /home/docker/vaultwarden/cli/.env && export $(cut -d= -f1 /home/docker/vaultwarden/cli/.env) && bash <(curl -Ls https://raw.githubusercontent.com/1040001624/Script/refs/heads/main/BitwardenCLI-Lv2.sh)",
+      "description": "",
+      "created_at": "2026-11-03T02:55:32+00:00",
+      "updated_at": "2026-11-03T02:55:32+00:00"
     }
   ]
 }
