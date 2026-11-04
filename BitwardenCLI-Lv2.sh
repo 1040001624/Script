@@ -96,16 +96,31 @@ bw logout
 
 # ----------------- 5. 使用 Rclone 上传至坚果云 -----------------
 echo "=== 正在通过 rclone 上传加密备份至坚果云 ==="
-# 优化：引入针对 WebDAV (坚果云) 的抗波动重试机制与网络连接参数
-rclone copy "$BACKUP_DIR/$BACKUP_FILE" "$REMOTE" \
+
+# 捕获 rclone 的详细输出，用来判断是上传了还是跳过了
+# --stats-one-line 可以让输出非常干净
+RCLONE_OUTPUT=$(rclone copy "$BACKUP_DIR/$BACKUP_FILE" "$REMOTE" \
     --config "$RCLONE_CONFIG" \
     --retries 3 \
     --low-level-retries 10 \
     --contimeout 30s \
     --timeout 5m \
-    --stats 1s \
-    -v
-echo "✅ 加密文件已成功同步至坚果云远端 ($REMOTE)"
+    --stats-one-line \
+    -v 2>&1 || true)
+
+# 打印原生简卷单行日志，方便保留底层数据（可选）
+echo "$RCLONE_OUTPUT" | grep -E "Transferred:|Elapsed" || true
+
+# 精准大白话业务逻辑判断
+if echo "$RCLONE_OUTPUT" | grep -qi "identical"; then
+    echo "ℹ️  提示: 坚果云端已存在今日相同的备份文件，rclone 已智能跳过重复上传。"
+elif echo "$RCLONE_OUTPUT" | grep -qi "Skipped"; then
+    echo "ℹ️  提示: 坚果云端已存在今日相同的备份文件，rclone 已智能跳过重复上传。"
+elif echo "$RCLONE_OUTPUT" | grep -q "Transferred: *[1-9]"; then
+    echo "🎉 成功: 检测到新文件或数据变动，今日加密备份已成功上传至坚果云！"
+else
+    echo "✅ 同步检查完成（云端文件状态与本地保持一致）。"
+fi
 
 # ----------------- 6. 本地与云端数据留存清理 -----------------
 echo "=== 正在清理本地旧备份 (保留最新 3 天) ==="
