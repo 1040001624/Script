@@ -13,15 +13,26 @@ set -euo pipefail
 ENV_FILE="$(dirname "$0")/.env"
 if [ -f "$ENV_FILE" ]; then
     echo "--- 正在加载 .env 配置文件 ---"
-    # 开启自动导出变量功能
-    set -a
-    # 使用 allexport 兼容的干净方式安全加载，过滤注释与空行，确保有空格的注释绝不报错
-    source <(grep -v '^[[:space:]]*#' "$ENV_FILE" | grep -v '^[[:space:]]*$')
-    # 关闭自动导出变量功能，恢复系统默认
-    set +a
+    # 逐行读取，精准兼容各种混杂写法
+    while IFS= read -r line || [ -n "$line" ]; do
+        # 清除两端空格
+        cleaned=$(echo "$line" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+        
+        # 1. 忽略空行和以 # 开头的注释
+        [[ -z "$cleaned" || "$cleaned" =~ ^# ]] && continue
+        
+        # 2. 如果这行本身就已经自带了 export，则直接执行它
+        if [[ "$cleaned" =~ ^export[[:space:]] ]]; then
+            eval "$cleaned"
+        else
+            # 3. 如果这行没有带 export，则帮它加上 export
+            export "$cleaned"
+        fi
+    done < "$ENV_FILE"
 else
     echo "⚠️ 警告: 未找到 .env 配置文件，将尝试读取系统环境变量"
 fi
+
 
 # ----------------- 1. 核心生产配置 -----------------
 CONTAINER="vaultwarden"
