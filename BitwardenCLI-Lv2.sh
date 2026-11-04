@@ -80,7 +80,7 @@ if ! command -v bw &> /dev/null; then
 fi
 
 # ----------------- 3. 配置服务器地址与登录 -----------------
-echo "=== 正在检查并重置登录状态 ==="
+echo "=== 正在检查并重置登录状态 =3=="
 bw logout || true
 bw config server "$VAULT_URL"
 
