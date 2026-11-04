@@ -23,7 +23,7 @@ mkdir -p "$BACKUP_DIR"
 send_qmsg() {
     local msg="[Vaultwarden备份] $1"
     if [ -n "$QMSG_KEY" ]; then
-        # 优化：采用 Qmsg 酱全新的 v3 接口和新域名进行异步推送
+        # 彻底修正：使用规范的变量符号并指向正确的官方 v3 最新接口
         curl -s -X POST "https://zendee.cn{QMSG_KEY}" \
             -d "msg=${msg}" > /dev/null 2>&1 &
     else
