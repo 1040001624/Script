@@ -3,36 +3,9 @@
 # ==============================================================================
 # 脚本名称: vaultwarden-backup.sh
 # 描述: Vaultwarden 凭据自动化备份 (本地留 3 份，坚果云通过 rclone 留 7 份)
-#       集成 Qmsg 酱通知推送
 # ==============================================================================
 
 set -euo pipefail
-
-# ----------------- 0. 加载 .env 环境变量 -----------------
-# 自动寻找脚本同目录下的 .env 文件并加载
-ENV_FILE="$(dirname "$0")/.env"
-if [ -f "$ENV_FILE" ]; then
-    echo "--- 正在加载 .env 配置文件 ---"
-    # 逐行读取，精准兼容各种混杂写法
-    while IFS= read -r line || [ -n "$line" ]; do
-        # 清除两端空格
-        cleaned=$(echo "$line" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
-        
-        # 1. 忽略空行和以 # 开头的注释
-        [[ -z "$cleaned" || "$cleaned" =~ ^# ]] && continue
-        
-        # 2. 如果这行本身就已经自带了 export，则直接执行它
-        if [[ "$cleaned" =~ ^export[[:space:]] ]]; then
-            eval "$cleaned"
-        else
-            # 3. 如果这行没有带 export，则帮它加上 export
-            export "$cleaned"
-        fi
-    done < "$ENV_FILE"
-else
-    echo "⚠️ 警告: 未找到 .env 配置文件，将尝试读取系统环境变量"
-fi
-
 
 # ----------------- 1. 核心生产配置 -----------------
 CONTAINER="vaultwarden"
@@ -42,33 +15,7 @@ REMOTE="jianguoyun:vaultwarden"
 RCLONE_CONFIG="/root/.config/rclone/rclone.conf"
 DATE=$(date +%F)
 
-# Qmsg 酱推送配置 (从 .env 中读取，若无则留空)
-QMSG_KEY="${QMSG_KEY:-}"
-QMSG_TYPE="${QMSG_TYPE:-send}" # 可选 send(好友) 或 group(群)
-
 mkdir -p "$BACKUP_DIR"
-
-# ----------------- 额外函数：Qmsg 推送 -----------------
-push_to_qmsg() {
-    local msg="$1"
-    if [ -z "$QMSG_KEY" ]; then
-        echo "ℹ️  提示: 未配置 Qmsg酱 TOKEN (QMSG_KEY)，跳过推送。"
-        return 0
-    fi
-    echo "⏳ 正在通过 Qmsg 酱推送状态..."
-    # 使用 curl 异步静默推送 (已修正域名和变量大括号)
-    curl -s -X POST "https://zendee.cn{QMSG_KEY}" \
-        -d "msg=${msg}" > /dev/null || echo "⚠️ Qmsg 酱推送失败"
-}
-
-# 捕获脚本异常错误，实现失败时推送
-error_trap() {
-    local exit_code=$?
-    if [ $exit_code -ne 0 ]; then
-        push_to_qmsg "❌ Vaultwarden 备份失败！今日 ($DATE) 脚本在执行过程中报错退出，请登录服务器检查日志。"
-    fi
-}
-trap error_trap EXIT
 
 # ----------------- 2. 环境依赖检查 -----------------
 # 检查宿主机 rclone
@@ -83,21 +30,25 @@ if [ ! -f "$RCLONE_CONFIG" ]; then
     exit 1
 fi
 
-# 检查 Bitwarden CLI
+# 检查 Bitwarden CLI (若无则自动下载官方最新纯二进制版，无需 unzip 依赖)
 if ! command -v bw &> /dev/null; then
     echo "=== 宿主机 Bitwarden CLI 未安装，正在拉取纯二进制版... ==="
     TMP_DIR=$(mktemp -d)
     
+    # 优化：通过官方 GitHub 获取最新版本，改用纯二进制拉取，规避 unzip 依赖
+    # 如果系统没有 curl 则尝试 wget
     FETCH_CMD=$(command -v curl >/dev/null && echo "curl -Lso" || echo "wget -qO")
     
     echo "⏳ 正在下载官方 Linux 独立版二进制..."
     $FETCH_CMD "$TMP_DIR/bw-linux.zip" "https://vault.bitwarden.com/download/?app=cli&platform=linux"
     
+    # 防错：如果宿主机确实没安装 unzip，则借用 python 或 perl 原生解压，不污染 apt 依赖
     if command -v unzip &> /dev/null; then
         unzip -q "$TMP_DIR/bw-linux.zip" -d "$TMP_DIR"
     elif command -v python3 &> /dev/null; then
         python3 -m zipfile -e "$TMP_DIR/bw-linux.zip" "$TMP_DIR"
     else
+        # 兜底：若前两者皆无，再调用权限最小化的 apt
         sudo apt-get update -qq && sudo apt-get install -y -qq unzip
         unzip -q "$TMP_DIR/bw-linux.zip" -d "$TMP_DIR"
     fi
@@ -132,8 +83,9 @@ echo "=== 开始生成备份文件 ==="
 BACKUP_FILE="vaultwarden-mi-$DATE.json"
 LOCAL_ENC_FILE="$BACKUP_DIR/$BACKUP_FILE"
 
-# 1. 密码保护型加密导出
+# 1. 密码保护型加密导出（支持安全迁移到任何其他账号）
 bw export --format encrypted_json --password "$BW_PASSWORD" --output "$LOCAL_ENC_FILE"
+echo "坚果云通过 rclone 留 7 份"
 echo "✅ 已生成通用加密备份: $LOCAL_ENC_FILE"
 
 # 2. 明文 JSON 备份
@@ -145,6 +97,8 @@ bw logout
 # ----------------- 5. 使用 Rclone 上传至坚果云 -----------------
 echo "=== 正在通过 rclone 上传加密备份至坚果云 ==="
 
+# 捕获 rclone 的详细输出，用来判断是上传了还是跳过了
+# --stats-one-line 可以让输出非常干净
 RCLONE_OUTPUT=$(rclone copy "$BACKUP_DIR/$BACKUP_FILE" "$REMOTE" \
     --config "$RCLONE_CONFIG" \
     --retries 3 \
@@ -154,20 +108,18 @@ RCLONE_OUTPUT=$(rclone copy "$BACKUP_DIR/$BACKUP_FILE" "$REMOTE" \
     --stats-one-line \
     -v 2>&1 || true)
 
+# 打印原生简卷单行日志，方便保留底层数据（可选）
 echo "$RCLONE_OUTPUT" | grep -E "Transferred:|Elapsed" || true
 
-# 初始化推送文本
-PUSH_MSG=""
-
-if echo "$RCLONE_OUTPUT" | grep -qiE "identical|skipped"; then
+# 精准大白话业务逻辑判断
+if echo "$RCLONE_OUTPUT" | grep -qi "identical"; then
     echo "ℹ️  提示: 坚果云端已存在今日相同的备份文件，rclone 已智能跳过重复上传。"
-    PUSH_MSG="ℹ️ Vaultwarden备份提醒：云端已存在今日相同备份，已智能跳过上传。本地与云端数据保持一致。"
+elif echo "$RCLONE_OUTPUT" | grep -qi "Skipped"; then
+    echo "ℹ️  提示: 坚果云端已存在今日相同的备份文件，rclone 已智能跳过重复上传。"
 elif echo "$RCLONE_OUTPUT" | grep -q "Transferred: *[1-9]"; then
     echo "🎉 成功: 检测到新文件或数据变动，今日加密备份已成功上传至坚果云！"
-    PUSH_MSG="🎉 Vaultwarden备份成功！今日加密备份已成功同步至坚果云盘。"
 else
     echo "✅ 同步检查完成（云端文件状态与本地保持一致）。"
-    PUSH_MSG="✅ Vaultwarden备份提醒：同步检查完成，云端文件状态与本地保持一致。"
 fi
 
 # ----------------- 6. 本地与云端数据留存清理 -----------------
@@ -177,6 +129,7 @@ find "$BACKUP_DIR" -name "vaultwarden-open-*.json" -mtime +3 -exec rm -f {} \;
 echo "✅ 本地旧备份清理完成"
 
 echo "=== 正在清理坚果云旧备份 (保留最新 7 份) ==="
+# 优化：采用更精准的限制条件，避免第三方文件混入
 REMOTE_FILES=$(rclone lsf "$REMOTE" --config "$RCLONE_CONFIG" --include "vaultwarden-mi-*.json" --files-only --max-depth 1 | sort)
 
 if [ -n "$REMOTE_FILES" ]; then
@@ -184,17 +137,12 @@ if [ -n "$REMOTE_FILES" ]; then
     if [ "$FILE_COUNT" -gt 7 ]; then
         DELETE_COUNT=$((FILE_COUNT - 7))
         echo "⏳ 远端历史旧备份超额，正在精准计算并批量清理 ${DELETE_COUNT} 份..."
+        
+        # 优化：将多次调用改变为流式输入，利用 rclone 内部连接池一次性批量删除，效率提升数倍
         echo "$REMOTE_FILES" | head -n "$DELETE_COUNT" | rclone delete --config "$RCLONE_CONFIG" --files-from - "$REMOTE"
-        PUSH_MSG="${PUSH_MSG} 远端旧数据清理完成，已精准完成历史超额留存清理。"
     fi
 fi
 echo "✅ 坚果云盘旧备份清理完成，当前保持最新 7 份"
 
-# 执行成功推送
-push_to_qmsg "$PUSH_MSG"
-
-# 正常退出，解除错误捕获
-trap - EXIT
-
 # 销毁敏感内存变量
-unset BW_SESSION BW_PASSWORD BW_CLIENTID BW_CLIENTSECRET QMSG_KEY QMSG_TYPE
+unset BW_SESSION BW_PASSWORD BW_CLIENTID BW_CLIENTSECRET
