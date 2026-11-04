@@ -13,17 +13,15 @@ set -euo pipefail
 ENV_FILE="$(dirname "$0")/.env"
 if [ -f "$ENV_FILE" ]; then
     echo "--- 正在加载 .env 配置文件 ---"
-    # 过滤掉以 # 开头的注释行和空行，然后逐行安全导出
-    while IFS= read -r line || [ -n "$line" ]; do
-        # 忽略注释和空行
-        if [[ ! "$line" =~ ^[[:space:]]*# && -n "$line" ]]; then
-            export "$line"
-        fi
-    done < "$ENV_FILE"
+    # 开启自动导出变量功能
+    set -a
+    # 使用 allexport 兼容的干净方式安全加载，过滤注释与空行，确保有空格的注释绝不报错
+    source <(grep -v '^[[:space:]]*#' "$ENV_FILE" | grep -v '^[[:space:]]*$')
+    # 关闭自动导出变量功能，恢复系统默认
+    set +a
 else
     echo "⚠️ 警告: 未找到 .env 配置文件，将尝试读取系统环境变量"
 fi
-
 
 # ----------------- 1. 核心生产配置 -----------------
 CONTAINER="vaultwarden"
