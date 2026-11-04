@@ -3,6 +3,7 @@
 # ==============================================================================
 # 脚本名称: vaultwarden-backup.sh
 # 描述: Vaultwarden 凭据自动化备份 (本地留 3 份，坚果云通过 rclone 留 7 份)
+#       集成 Qmsg 酱渠道通知推送
 # ==============================================================================
 
 set -euo pipefail
@@ -14,19 +15,37 @@ BACKUP_DIR="/home/docker/vaultwarden/cli"
 REMOTE="jianguoyun:vaultwarden"
 RCLONE_CONFIG="/root/.config/rclone/rclone.conf"
 DATE=$(date +%F)
+QMSG_KEY="qmsg://1e02706100bd4551ce8ac0356cf0a8f821f2fd85?qq=1040001624"
 
 mkdir -p "$BACKUP_DIR"
+
+# ----------------- qmsg 推送函数 -----------------
+send_qmsg() {
+    local msg="[Vaultwarden备份] $1"
+    if [ -n "$QMSG_KEY" ]; then
+        # 使用异步 curl 避免因为网络原因阻塞备份主流程
+        curl -s -X POST "https://zendee.cn{QMSG_KEY}" \
+            -d "msg=${msg}" > /dev/null 2>&1 &
+    else
+        echo "ℹ️  提示: 未配置 QMSG_KEY，跳过消息推送。"
+    fi
+}
+
+# 捕获未预期错误进行 qmsg 推送
+trap 'send_qmsg "❌ 脚本运行异常终止！请检查宿主机日志。"; exit 1' ERR
 
 # ----------------- 2. 环境依赖检查 -----------------
 # 检查宿主机 rclone
 if ! command -v rclone &> /dev/null; then
-    echo "❌ 错误: 宿主机未检测到 rclone，请先安装并在 $RCLONE_CONFIG 配置好坚果云"
+    msg="❌ 错误: 宿主机未检测到 rclone，请先安装并在 $RCLONE_CONFIG 配置好坚果云"
+    echo "$msg" && send_qmsg "$msg"
     exit 1
 fi
 
 # 检查宿主机是否有 rclone 配置文件
 if [ ! -f "$RCLONE_CONFIG" ]; then
-    echo "❌ 错误: 未在指定路径找到 rclone 配置文件: $RCLONE_CONFIG"
+    msg="❌ 错误: 未在指定路径找到 rclone 配置文件: $RCLONE_CONFIG"
+    echo "$msg" && send_qmsg "$msg"
     exit 1
 fi
 
@@ -66,7 +85,8 @@ bw logout || true
 bw config server "$VAULT_URL"
 
 if [ -z "${BW_CLIENTID:-}" ] || [ -z "${BW_CLIENTSECRET:-}" ] || [ -z "${BW_PASSWORD:-}" ]; then
-    echo "❌ 错误: 请先设置环境变量 BW_CLIENTID, BW_CLIENTSECRET 和 BW_PASSWORD"
+    msg="❌ 错误: 请先设置环境变量 BW_CLIENTID, BW_CLIENTSECRET 和 BW_PASSWORD"
+    echo "$msg" && send_qmsg "$msg"
     exit 1
 fi
 
@@ -85,7 +105,6 @@ LOCAL_ENC_FILE="$BACKUP_DIR/$BACKUP_FILE"
 
 # 1. 密码保护型加密导出（支持安全迁移到任何其他账号）
 bw export --format encrypted_json --password "$BW_PASSWORD" --output "$LOCAL_ENC_FILE"
-echo "坚果云通过 rclone 留 7 份"
 echo "✅ 已生成通用加密备份: $LOCAL_ENC_FILE"
 
 # 2. 明文 JSON 备份
@@ -98,7 +117,6 @@ bw logout
 echo "=== 正在通过 rclone 上传加密备份至坚果云 ==="
 
 # 捕获 rclone 的详细输出，用来判断是上传了还是跳过了
-# --stats-one-line 可以让输出非常干净
 RCLONE_OUTPUT=$(rclone copy "$BACKUP_DIR/$BACKUP_FILE" "$REMOTE" \
     --config "$RCLONE_CONFIG" \
     --retries 3 \
@@ -113,13 +131,17 @@ echo "$RCLONE_OUTPUT" | grep -E "Transferred:|Elapsed" || true
 
 # 精准大白话业务逻辑判断
 if echo "$RCLONE_OUTPUT" | grep -qi "identical"; then
-    echo "ℹ️  提示: 坚果云端已存在今日相同的备份文件，rclone 已智能跳过重复上传。"
+    msg="ℹ️  坚果云端已存在今日相同的备份文件，rclone 已智能跳过重复上传。"
+    echo "$msg" && send_qmsg "$msg"
 elif echo "$RCLONE_OUTPUT" | grep -qi "Skipped"; then
-    echo "ℹ️  提示: 坚果云端已存在今日相同的备份文件，rclone 已智能跳过重复上传。"
+    msg="ℹ️  坚果云端已存在今日相同的备份文件，rclone 已智能跳过重复上传。"
+    echo "$msg" && send_qmsg "$msg"
 elif echo "$RCLONE_OUTPUT" | grep -q "Transferred: *[1-9]"; then
-    echo "🎉 成功: 检测到新文件或数据变动，今日加密备份已成功上传至坚果云！"
+    msg="🎉 检测到新文件或数据变动，今日加密备份已成功上传至坚果云！"
+    echo "$msg" && send_qmsg "$msg"
 else
-    echo "✅ 同步检查完成（云端文件状态与本地保持一致）。"
+    msg="✅ 同步检查完成（云端文件状态与本地保持一致）。"
+    echo "$msg" && send_qmsg "$msg"
 fi
 
 # ----------------- 6. 本地与云端数据留存清理 -----------------
@@ -138,11 +160,15 @@ if [ -n "$REMOTE_FILES" ]; then
         DELETE_COUNT=$((FILE_COUNT - 7))
         echo "⏳ 远端历史旧备份超额，正在精准计算并批量清理 ${DELETE_COUNT} 份..."
         
-        # 优化：将多次调用改变为流式输入，利用 rclone 内部连接池一次性批量删除，效率提升数倍
+        # 优化：利用 rclone 内部连接池一次性批量删除
         echo "$REMOTE_FILES" | head -n "$DELETE_COUNT" | rclone delete --config "$RCLONE_CONFIG" --files-from - "$REMOTE"
+        send_qmsg "🧹 远端历史旧备份超额，已自动精准清理云端历史备份 ${DELETE_COUNT} 份。"
     fi
 fi
 echo "✅ 坚果云盘旧备份清理完成，当前保持最新 7 份"
 
 # 销毁敏感内存变量
 unset BW_SESSION BW_PASSWORD BW_CLIENTID BW_CLIENTSECRET
+
+# 取消捕获
+trap - ERR
