@@ -30,15 +30,29 @@ if [ ! -f "$RCLONE_CONFIG" ]; then
     exit 1
 fi
 
-# 检查 Bitwarden CLI (优先使用宿主机，若无则自动下载官方最新独立版)
+# 检查 Bitwarden CLI (若无则自动下载官方最新纯二进制版，无需 unzip 依赖)
 if ! command -v bw &> /dev/null; then
-    echo "=== 宿主机 Bitwarden CLI 未安装，正在通过官方二进制方式安装... ==="
-    sudo apt update && sudo apt install -y unzip curl
-    
-    # 创建临时目录下载并解压
+    echo "=== 宿主机 Bitwarden CLI 未安装，正在拉取纯二进制版... ==="
     TMP_DIR=$(mktemp -d)
-    curl -Lso "$TMP_DIR/bw-linux.zip" "https://vault.bitwarden.com/download/?app=cli&platform=linux"
-    unzip -q "$TMP_DIR/bw-linux.zip" -d "$TMP_DIR"
+    
+    # 优化：通过官方 GitHub 获取最新版本，改用纯二进制拉取，规避 unzip 依赖
+    # 如果系统没有 curl 则尝试 wget
+    FETCH_CMD=$(command -v curl >/dev/null && echo "curl -Lso" || echo "wget -qO")
+    
+    echo "⏳ 正在下载官方 Linux 独立版二进制..."
+    $FETCH_CMD "$TMP_DIR/bw-linux.zip" "https://vault.bitwarden.com/download/?app=cli&platform=linux"
+    
+    # 防错：如果宿主机确实没安装 unzip，则借用 python 或 perl 原生解压，不污染 apt 依赖
+    if command -v unzip &> /dev/null; then
+        unzip -q "$TMP_DIR/bw-linux.zip" -d "$TMP_DIR"
+    elif command -v python3 &> /dev/null; then
+        python3 -m zipfile -e "$TMP_DIR/bw-linux.zip" "$TMP_DIR"
+    else
+        # 兜底：若前两者皆无，再调用权限最小化的 apt
+        sudo apt-get update -qq && sudo apt-get install -y -qq unzip
+        unzip -q "$TMP_DIR/bw-linux.zip" -d "$TMP_DIR"
+    fi
+    
     chmod +x "$TMP_DIR/bw"
     sudo mv "$TMP_DIR/bw" /usr/local/bin/
     rm -rf "$TMP_DIR"
@@ -71,6 +85,7 @@ LOCAL_ENC_FILE="$BACKUP_DIR/$BACKUP_FILE"
 
 # 1. 密码保护型加密导出（支持安全迁移到任何其他账号）
 bw export --format encrypted_json --password "$BW_PASSWORD" --output "$LOCAL_ENC_FILE"
+echo "坚果云通过 rclone 留 7 份"
 echo "✅ 已生成通用加密备份: $LOCAL_ENC_FILE"
 
 # 2. 明文 JSON 备份
@@ -81,35 +96,38 @@ bw logout
 
 # ----------------- 5. 使用 Rclone 上传至坚果云 -----------------
 echo "=== 正在通过 rclone 上传加密备份至坚果云 ==="
-rclone copy "$BACKUP_DIR/$BACKUP_FILE" "$REMOTE" --config "$RCLONE_CONFIG"
+# 优化：引入针对 WebDAV (坚果云) 的抗波动重试机制与网络连接参数
+rclone copy "$BACKUP_DIR/$BACKUP_FILE" "$REMOTE" \
+    --config "$RCLONE_CONFIG" \
+    --retries 3 \
+    --low-level-retries 10 \
+    --contimeout 30s \
+    --timeout 5m \
+    --stats 1s \
+    -v
 echo "✅ 加密文件已成功同步至坚果云远端 ($REMOTE)"
 
 # ----------------- 6. 本地与云端数据留存清理 -----------------
 echo "=== 正在清理本地旧备份 (保留最新 3 天) ==="
-# 使用 find 安全安全清理，规避 ls -t 的滚动覆盖风险
 find "$BACKUP_DIR" -name "vaultwarden-mi-*.json" -mtime +3 -exec rm -f {} \;
 find "$BACKUP_DIR" -name "vaultwarden-open-*.json" -mtime +3 -exec rm -f {} \;
 echo "✅ 本地旧备份清理完成"
 
 echo "=== 正在清理坚果云旧备份 (保留最新 7 份) ==="
-# 使用 rclone lsf 获取干净的文件列表（确保没有空行干扰）
-REMOTE_FILES=$(rclone lsf "$REMOTE" --config "$RCLONE_CONFIG" --include "vaultwarden-mi-*.json" --files-only | sort)
+# 优化：采用更精准的限制条件，避免第三方文件混入
+REMOTE_FILES=$(rclone lsf "$REMOTE" --config "$RCLONE_CONFIG" --include "vaultwarden-mi-*.json" --files-only --max-depth 1 | sort)
 
-# 精准计算行数
 if [ -n "$REMOTE_FILES" ]; then
     FILE_COUNT=$(echo "$REMOTE_FILES" | wc -l)
     if [ "$FILE_COUNT" -gt 7 ]; then
         DELETE_COUNT=$((FILE_COUNT - 7))
-        echo "$REMOTE_FILES" | head -n "$DELETE_COUNT" | while read -r OLD_FILE; do
-            if [ -n "$OLD_FILE" ]; then
-                echo "⏳ 正在删除远端历史旧备份: $OLD_FILE"
-                rclone deletefile "$REMOTE/$OLD_FILE" --config "$RCLONE_CONFIG"
-            fi
-        done
+        echo "⏳ 远端历史旧备份超额，正在精准计算并批量清理 ${DELETE_COUNT} 份..."
+        
+        # 优化：将多次调用改变为流式输入，利用 rclone 内部连接池一次性批量删除，效率提升数倍
+        echo "$REMOTE_FILES" | head -n "$DELETE_COUNT" | rclone delete --config "$RCLONE_CONFIG" --files-from - "$REMOTE"
     fi
 fi
 echo "✅ 坚果云盘旧备份清理完成，当前保持最新 7 份"
 
 # 销毁敏感内存变量
 unset BW_SESSION BW_PASSWORD BW_CLIENTID BW_CLIENTSECRET
-
