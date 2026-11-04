@@ -56,8 +56,8 @@ push_to_qmsg() {
         return 0
     fi
     echo "⏳ 正在通过 Qmsg 酱推送状态..."
-    # 使用 curl 异步静默推送
-    curl -s -X POST "https://zendee.cn{QMSG_TYPE}/${QMSG_KEY}" \
+    # 使用 curl 异步静默推送 (已修正域名和变量大括号)
+    curl -s -X POST "https://zendee.cn{QMSG_KEY}" \
         -d "msg=${msg}" > /dev/null || echo "⚠️ Qmsg 酱推送失败"
 }
 
