@@ -3,7 +3,7 @@
 # ==============================================================================
 # 脚本名称: vaultwarden-backup.sh
 # 描述: Vaultwarden 凭据自动化备份 (本地留 3 份，坚果云通过 rclone 留 7 份)
-#       集成 Qmsg 酱渠道通知推送
+#       集成 Qmsg 酱新渠道通知推送
 # ==============================================================================
 
 set -euo pipefail
@@ -15,7 +15,7 @@ BACKUP_DIR="/home/docker/vaultwarden/cli"
 REMOTE="jianguoyun:vaultwarden"
 RCLONE_CONFIG="/root/.config/rclone/rclone.conf"
 DATE=$(date +%F)
-QMSG_KEY="qmsg://1e02706100bd4551ce8ac0356cf0a8f821f2fd85?qq=1040001624"
+QMSG_KEY="1e02706100bd4551ce8ac0356cf0a8f821f2fd85" 
 
 mkdir -p "$BACKUP_DIR"
 
@@ -23,7 +23,7 @@ mkdir -p "$BACKUP_DIR"
 send_qmsg() {
     local msg="[Vaultwarden备份] $1"
     if [ -n "$QMSG_KEY" ]; then
-        # 使用异步 curl 避免因为网络原因阻塞备份主流程
+        # 优化：采用 Qmsg 酱全新的 v3 接口和新域名进行异步推送
         curl -s -X POST "https://zendee.cn{QMSG_KEY}" \
             -d "msg=${msg}" > /dev/null 2>&1 &
     else
@@ -150,7 +150,6 @@ find "$BACKUP_DIR" -name "vaultwarden-mi-*.json" -mtime +3 -exec rm -f {} \;
 find "$BACKUP_DIR" -name "vaultwarden-open-*.json" -mtime +3 -exec rm -f {} \;
 echo "✅ 本地旧备份清理完成"
 
-echo "=== 正在清理坚果云旧备份 (保留最新 7 份) ==="
 # 优化：采用更精准的限制条件，避免第三方文件混入
 REMOTE_FILES=$(rclone lsf "$REMOTE" --config "$RCLONE_CONFIG" --include "vaultwarden-mi-*.json" --files-only --max-depth 1 | sort)
 
