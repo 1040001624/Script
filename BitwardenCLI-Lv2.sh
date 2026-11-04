@@ -85,25 +85,31 @@ rclone copy "$BACKUP_DIR/$BACKUP_FILE" "$REMOTE" --config "$RCLONE_CONFIG"
 echo "✅ 加密文件已成功同步至坚果云远端 ($REMOTE)"
 
 # ----------------- 6. 本地与云端数据留存清理 -----------------
-echo "=== 正在清理本地旧备份 (保留最新 3 份) ==="
-cd "$BACKUP_DIR"
-# 分别对加密和明文文件执行最新 3 份保留策略
-ls -t vaultwarden-mi-*.json 2>/dev/null | tail -n +4 | xargs -I {} rm -f {} || true
-ls -t vaultwarden-open-*.json 2>/dev/null | tail -n +4 | xargs -I {} rm -f {} || true
+echo "=== 正在清理本地旧备份 (保留最新 3 天) ==="
+# 使用 find 安全安全清理，规避 ls -t 的滚动覆盖风险
+find "$BACKUP_DIR" -name "vaultwarden-mi-*.json" -mtime +3 -exec rm -f {} \;
+find "$BACKUP_DIR" -name "vaultwarden-open-*.json" -mtime +3 -exec rm -f {} \;
 echo "✅ 本地旧备份清理完成"
 
 echo "=== 正在清理坚果云旧备份 (保留最新 7 份) ==="
-# 使用 rclone lsf 配合安全文件名过滤器拉取远端文件列表
+# 使用 rclone lsf 获取干净的文件列表（确保没有空行干扰）
 REMOTE_FILES=$(rclone lsf "$REMOTE" --config "$RCLONE_CONFIG" --include "vaultwarden-mi-*.json" --files-only | sort)
-FILE_COUNT=$(echo "$REMOTE_FILES" | grep -c "$" || echo 0)
 
-if [ "$FILE_COUNT" -gt 7 ]; then
-    DELETE_COUNT=$((FILE_COUNT - 7))
-    echo "$REMOTE_FILES" | head -n "$DELETE_COUNT" | while read -r OLD_FILE; do
-        echo "⏳ 正在删除远端历史旧备份: $OLD_FILE"
-        rclone deletefile "$REMOTE/$OLD_FILE" --config "$RCLONE_CONFIG"
-    done
+# 精准计算行数
+if [ -n "$REMOTE_FILES" ]; then
+    FILE_COUNT=$(echo "$REMOTE_FILES" | wc -l)
+    if [ "$FILE_COUNT" -gt 7 ]; then
+        DELETE_COUNT=$((FILE_COUNT - 7))
+        echo "$REMOTE_FILES" | head -n "$DELETE_COUNT" | while read -r OLD_FILE; do
+            if [ -n "$OLD_FILE" ]; then
+                echo "⏳ 正在删除远端历史旧备份: $OLD_FILE"
+                rclone deletefile "$REMOTE/$OLD_FILE" --config "$RCLONE_CONFIG"
+            fi
+        done
+    fi
 fi
 echo "✅ 坚果云盘旧备份清理完成，当前保持最新 7 份"
 
-echo "🎉 恭喜！所有本地备份、安全加密、云端上传及双向滚动清理任务已成功完成！"
+# 销毁敏感内存变量
+unset BW_SESSION BW_PASSWORD BW_CLIENTID BW_CLIENTSECRET
+
