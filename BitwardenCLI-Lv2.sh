@@ -13,13 +13,17 @@ set -euo pipefail
 ENV_FILE="$(dirname "$0")/.env"
 if [ -f "$ENV_FILE" ]; then
     echo "--- 正在加载 .env 配置文件 ---"
-    # 过滤掉注释和空行，自动 export 所有变量
-    set -a
-    source "$ENV_FILE"
-    set +a
+    # 过滤掉以 # 开头的注释行和空行，然后逐行安全导出
+    while IFS= read -r line || [ -n "$line" ]; do
+        # 忽略注释和空行
+        if [[ ! "$line" =~ ^[[:space:]]*# && -n "$line" ]]; then
+            export "$line"
+        fi
+    done < "$ENV_FILE"
 else
     echo "⚠️ 警告: 未找到 .env 配置文件，将尝试读取系统环境变量"
 fi
+
 
 # ----------------- 1. 核心生产配置 -----------------
 CONTAINER="vaultwarden"
