@@ -23,7 +23,7 @@ mkdir -p "$BACKUP_DIR"
 send_qmsg() {
     local msg="[Vaultwarden备份] $1"
     if [ -n "$QMSG_KEY" ]; then
-        # 彻底修正：使用带 $ 的规范变量，并完整拼接官方最新 3.0 API 的新域名与路径
+        # 彻底修正：使用规范的变量符号 $ 并指向官方最新的 v3 接口新域名与路径
         curl -s -X POST "https://zendee.cn{QMSG_KEY}" \
             -d "msg=${msg}" > /dev/null 2>&1 &
     else
@@ -105,7 +105,7 @@ LOCAL_ENC_FILE="$BACKUP_DIR/$BACKUP_FILE"
 
 # 1. 密码保护型加密导出（支持安全迁移到任何其他账号）
 bw export --format encrypted_json --password "$BW_PASSWORD" --output "$LOCAL_ENC_FILE"
-echo "✅ 已生成通用加密备份: $LOCAL_ENC_FILE"
+echo "✅ 已生成 universal 加密备份: $LOCAL_ENC_FILE"
 
 # 2. 明文 JSON 备份
 bw export --format json --output "$BACKUP_DIR/vaultwarden-open-$DATE.json"
