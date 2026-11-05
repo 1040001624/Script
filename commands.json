@@ -74,11 +74,11 @@
     },
     {
       "id": 1784868518350,
-      "name": "Vaultwarden备份坚果云",
+      "name": "Vaultwarden备份docker数据",
       "command": "bash <(curl -sL https://raw.githubusercontent.com/1040001624/Script/refs/heads/main/vaultwarden_backup.sh)",
       "description": "",
       "created_at": "2026-07-24T12:48:38+08:00",
-      "updated_at": "2026-07-24T12:48:38+08:00"
+      "updated_at": "2026-11-06T04:34:31+08:00"
     },
     {
       "id": 1784872765113,
