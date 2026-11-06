@@ -123,10 +123,28 @@ else
 fi
 
 # ----------------- 6. 本地与云端数据留存清理 -----------------
-echo "=== 正在清理本地旧备份 (保留最新 3 天) ==="
-find "$BACKUP_DIR" -name "vaultwarden-mi-*.json" -mtime +3 -exec rm -f {} \;
-find "$BACKUP_DIR" -name "vaultwarden-open-*.json" -mtime +3 -exec rm -f {} \;
-echo "✅ 本地旧备份清理完成"
+echo "=== 正在清理本地旧备份 (保留最新 3 份) ==="
+
+# 清理本地加密备份
+LOCAL_MI_FILES=$(find "$BACKUP_DIR" -maxdepth 1 -name "vaultwarden-mi-*.json" -type f | sort)
+if [ -n "$LOCAL_MI_FILES" ]; then
+    MI_COUNT=$(echo "$LOCAL_MI_FILES" | wc -l)
+    if [ "$MI_COUNT" -gt 3 ]; then
+        echo "$LOCAL_MI_FILES" | head -n "$((MI_COUNT - 3))" | xargs rm -f
+    fi
+fi
+
+# 清理本地明文备份
+LOCAL_OPEN_FILES=$(find "$BACKUP_DIR" -maxdepth 1 -name "vaultwarden-open-*.json" -type f | sort)
+if [ -n "$LOCAL_OPEN_FILES" ]; then
+    OPEN_COUNT=$(echo "$LOCAL_OPEN_FILES" | wc -l)
+    if [ "$OPEN_COUNT" -gt 3 ]; then
+        echo "$LOCAL_OPEN_FILES" | head -n "$((OPEN_COUNT - 3))" | xargs rm -f
+    fi
+fi
+
+echo "✅ 本地旧备份清理完成，当前保持最新 3 份"
+
 
 echo "=== 正在清理坚果云旧备份 (保留最新 7 份) ==="
 # 优化：采用更精准的限制条件，避免第三方文件混入
